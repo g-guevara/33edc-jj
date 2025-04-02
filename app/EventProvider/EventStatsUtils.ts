@@ -78,7 +78,7 @@ export const filterTodayEvents = (events: Evento[]): Evento[] => {
       return matches;
     });
     
-    console.log(`Eventos filtrados para hoy (${todayDayOfWeek}): ${filteredEvents}`);
+    console.log(`Eventos filtrados para hoy (Miércoles): ${JSON.stringify(filteredEvents)}`);
     
     // Save today's events for the widget
     saveEventsForWidget(filteredEvents);
@@ -92,22 +92,27 @@ export const filterTodayEvents = (events: Evento[]): Evento[] => {
  */
 export const saveEventsForWidget = async (events: Evento[]) => {
   try {
-    // Prepare data for widget - just the basic event text for simplicity
+    // Prepara datos más completos para el widget
     const widgetEvents = events.map(event => ({
       id: event._id,
-      text: event.Evento // Just show the full event title
+      text: event.Evento,
+      type: event.Tipo,
+      room: event.Sala,
+      startTime: event.Inicio,
+      endTime: event.Fin,
+      building: event.Edificio
     }));
     
-    // Convert to string for storage
+    // Convierte a string para almacenamiento
     const jsonValue = JSON.stringify(widgetEvents);
     
-    // Save to AsyncStorage as backup
+    // Guarda en AsyncStorage como backup
     await AsyncStorage.setItem('widgetEvents', jsonValue);
     
-    // Also save to UserDefaults shared with widget
+    // También guarda en UserDefaults compartido con widget
     if (NativeModules.SharedStorage) {
       NativeModules.SharedStorage.set(
-        "savedTexts", // Using the same key as in resetnativelocale for compatibility
+        "savedTexts", // Mantén la misma clave para compatibilidad
         jsonValue
       );
     } else {

@@ -1,23 +1,28 @@
 import WidgetKit
 import SwiftUI
 
-// Modelo para los textos guardados
-struct SavedText: Identifiable, Codable {
+// Modelo para los eventos guardados con campos adicionales
+struct SavedEvent: Identifiable, Codable {
     let id: String
     let text: String
+    let type: String?
+    let room: String?
+    let startTime: String?
+    let endTime: String?
+    let building: String?
 }
 
 struct Provider: TimelineProvider {
     func placeholder(in context: Context) -> SimpleEntry {
         print("📱 Widget: placeholder called - initializing with empty data")
-        return SimpleEntry(date: Date(), savedTexts: [])
+        return SimpleEntry(date: Date(), savedEvents: [])
     }
 
     func getSnapshot(in context: Context, completion: @escaping (SimpleEntry) -> ()) {
         print("📱 Widget: getSnapshot called - fetching latest data")
-        let savedTexts = fetchSavedTexts()
-        print("📱 Widget: getSnapshot found \(savedTexts.count) saved events")
-        let entry = SimpleEntry(date: Date(), savedTexts: savedTexts)
+        let savedEvents = fetchSavedEvents()
+        print("📱 Widget: getSnapshot found \(savedEvents.count) saved events")
+        let entry = SimpleEntry(date: Date(), savedEvents: savedEvents)
         completion(entry)
     }
     
@@ -25,16 +30,16 @@ struct Provider: TimelineProvider {
         print("📱 Widget: getTimeline called - generating new timeline")
         var entries: [SimpleEntry] = []
 
-        let savedTexts = fetchSavedTexts()
-        print("📱 Widget: getTimeline found \(savedTexts.count) saved events")
-        if !savedTexts.isEmpty {
-            print("📱 Widget: Found events: \(savedTexts.map { $0.text }.joined(separator: ", "))")
+        let savedEvents = fetchSavedEvents()
+        print("📱 Widget: getTimeline found \(savedEvents.count) saved events")
+        if !savedEvents.isEmpty {
+            print("📱 Widget: Found events: \(savedEvents.map { $0.text }.joined(separator: ", "))")
         } else {
             print("📱 Widget: No saved events found")
         }
         
         let currentDate = Date()
-        let entry = SimpleEntry(date: currentDate, savedTexts: savedTexts)
+        let entry = SimpleEntry(date: currentDate, savedEvents: savedEvents)
         entries.append(entry)
 
         let nextUpdateDate = Calendar.current.date(byAdding: .minute, value: 2, to: currentDate)!
@@ -43,60 +48,147 @@ struct Provider: TimelineProvider {
         completion(timeline)
     }
     
-    // Función para obtener los textos guardados del storage compartido
-    private func fetchSavedTexts() -> [SavedText] {
-        print("📱 Widget: Attempting to fetch saved texts from shared UserDefaults")
-        guard let sharedDefaults = UserDefaults(suiteName: "group.com.yourcompany.7io-locale.shared") else {
+    // Función para obtener los eventos guardados del storage compartido
+    private func fetchSavedEvents() -> [SavedEvent] {
+        print("📱 Widget: Attempting to fetch saved events from shared UserDefaults")
+        
+        guard let sharedDefaults = UserDefaults(suiteName: "group.com.anonymous.test1.shared") else {
             print("📱 Widget: Failed to access shared UserDefaults")
             return []
         }
         
-        guard let savedTextsString = sharedDefaults.string(forKey: "savedTexts") else {
-            print("📱 Widget: No saved texts found in UserDefaults")
+        // Log all keys in the shared defaults for debugging
+        print("📱 Widget: All keys in shared defaults:")
+        for key in sharedDefaults.dictionaryRepresentation().keys {
+            print("- \(key)")
+        }
+        
+        guard let savedEventsString = sharedDefaults.string(forKey: "savedTexts") else {
+            print("📱 Widget: No saved events found in UserDefaults for key 'savedTexts'")
             return []
         }
         
-        guard let data = savedTextsString.data(using: .utf8) else {
-            print("📱 Widget: Failed to convert saved texts string to data")
+        print("📱 Widget: Found savedEvents string with length: \(savedEventsString.count)")
+        
+        guard let data = savedEventsString.data(using: .utf8) else {
+            print("📱 Widget: Failed to convert saved events string to data")
             return []
         }
         
         do {
-            let decodedTexts = try JSONDecoder().decode([SavedText].self, from: data)
-            print("📱 Widget: Successfully decoded \(decodedTexts.count) saved texts")
-            return decodedTexts
+            // Intentar decodificar usando el nuevo modelo
+            let decodedEvents = try JSONDecoder().decode([SavedEvent].self, from: data)
+            print("📱 Widget: Successfully decoded \(decodedEvents.count) saved events")
+            return decodedEvents
         } catch {
-            print("📱 Widget: Error decoding saved texts: \(error)")
-            return []
+            print("📱 Widget: Error decoding with new model, trying fallback: \(error)")
+            
+            // Fallback para mantener compatibilidad con el formato anterior
+            do {
+                // Estructura antigua para compatibilidad
+                struct SavedText: Identifiable, Codable {
+                    let id: String
+                    let text: String
+                }
+                
+                // Intentar decodificar con el modelo antiguo
+                let oldFormatEvents = try JSONDecoder().decode([SavedText].self, from: data)
+                
+                // Convertir al nuevo formato
+                let convertedEvents = oldFormatEvents.map { SavedEvent(
+                    id: $0.id,
+                    text: $0.text,
+                    type: nil,
+                    room: nil,
+                    startTime: nil,
+                    endTime: nil,
+                    building: nil
+                )}
+                
+                print("📱 Widget: Successfully decoded \(convertedEvents.count) events with old format")
+                return convertedEvents
+            } catch {
+                print("📱 Widget: Error decoding with fallback model: \(error)")
+                return []
+            }
         }
     }
 }
 
 struct SimpleEntry: TimelineEntry {
     let date: Date
-    let savedTexts: [SavedText]
+    let savedEvents: [SavedEvent]
 }
 
 struct myWidgetEntryView : View {
     var entry: Provider.Entry
+    
+    // Función para formatear la hora (recortar a formato HH:MM)
+    func formatTime(_ timeString: String?) -> String {
+        guard let time = timeString else { return "" }
+        // Si el formato es "HH:MM:SS", recortar a "HH:MM"
+        if time.count >= 5 {
+            return String(time.prefix(5))
+        }
+        return time
+    }
 
     var body: some View {
-        VStack(alignment: .leading) {
-            Text("Eventos de hoy:")
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Eventos de hoy")
                 .font(.headline)
-                .padding(.bottom, 4)
+                .padding(.bottom, 2)
             
-            if entry.savedTexts.isEmpty {
+            if entry.savedEvents.isEmpty {
                 Text("No hay eventos guardados")
                     .font(.caption)
                     .foregroundColor(.gray)
             } else {
-                // Mostrar solo los eventos, bien simple como pediste
-                ForEach(entry.savedTexts) { text in
-                    Text(text.text)
-                        .font(.caption)
-                        .lineLimit(1)
-                        .padding(.vertical, 2)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(entry.savedEvents) { event in
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(event.text)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .lineLimit(1)
+                                
+                                HStack(spacing: 4) {
+                                    if let room = event.room, !room.isEmpty {
+                                        Text(room)
+                                            .font(.caption2)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(Color.gray.opacity(0.2))
+                                            .cornerRadius(4)
+                                    }
+                                    
+                                    if let start = event.startTime, let end = event.endTime {
+                                        Text("\(formatTime(start)) - \(formatTime(end))")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    
+                                    if let type = event.type, !type.isEmpty {
+                                        Spacer()
+                                        Text(type)
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                                
+                                if let building = event.building, !building.isEmpty {
+                                    Text(building)
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                        .lineLimit(1)
+                                }
+                                
+                                Divider()
+                                    .opacity(0.5)
+                            }
+                        }
+                    }
                 }
             }
         }
