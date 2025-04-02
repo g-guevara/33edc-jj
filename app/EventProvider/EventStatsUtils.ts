@@ -53,6 +53,7 @@ export const filterTodayEvents = (events: Evento[]): Evento[] => {
     
     console.log(`Día de la semana actual: ${todayDayOfWeek}`);
     console.log(`Total de eventos guardados: ${events.length}`);
+
     
     // Filter events that match the current day of week
     const filteredEvents = events.filter(event => {
@@ -77,10 +78,11 @@ export const filterTodayEvents = (events: Evento[]): Evento[] => {
       return matches;
     });
     
-    console.log(`Eventos filtrados para hoy (${todayDayOfWeek}): ${filteredEvents.length}`);
+    console.log(`Eventos filtrados para hoy (${todayDayOfWeek}): ${filteredEvents}`);
     
     // Save today's events for the widget
     saveEventsForWidget(filteredEvents);
+
     
     return filteredEvents;
 };
