@@ -14,38 +14,78 @@ struct SavedEvent: Identifiable, Codable {
 
 struct Provider: TimelineProvider {
     func placeholder(in context: Context) -> SimpleEntry {
-        print("📱 Widget: placeholder called - initializing with empty data")
-        return SimpleEntry(date: Date(), savedEvents: [])
+        print("📱 Widget: placeholder called - initializing with placeholder data")
+        let currentDate = Date()
+        let dayOfWeek = formatDayOfWeek(currentDate)
+        let dayNumber = formatDayNumber(currentDate)
+        
+        return SimpleEntry(
+            date: currentDate,
+            dayOfWeek: dayOfWeek,
+            dayNumber: dayNumber,
+            savedEvents: []
+        )
     }
 
     func getSnapshot(in context: Context, completion: @escaping (SimpleEntry) -> ()) {
         print("📱 Widget: getSnapshot called - fetching latest data")
+        let currentDate = Date()
+        let dayOfWeek = formatDayOfWeek(currentDate)
+        let dayNumber = formatDayNumber(currentDate)
         let savedEvents = fetchSavedEvents()
-        print("📱 Widget: getSnapshot found \(savedEvents.count) saved events")
-        let entry = SimpleEntry(date: Date(), savedEvents: savedEvents)
+        
+        let entry = SimpleEntry(
+            date: currentDate,
+            dayOfWeek: dayOfWeek,
+            dayNumber: dayNumber,
+            savedEvents: savedEvents
+        )
         completion(entry)
     }
     
     func getTimeline(in context: Context, completion: @escaping (Timeline<SimpleEntry>) -> ()) {
         print("📱 Widget: getTimeline called - generating new timeline")
-        var entries: [SimpleEntry] = []
-
+        let currentDate = Date()
+        let dayOfWeek = formatDayOfWeek(currentDate)
+        let dayNumber = formatDayNumber(currentDate)
         let savedEvents = fetchSavedEvents()
+        
         print("📱 Widget: getTimeline found \(savedEvents.count) saved events")
+        
         if !savedEvents.isEmpty {
             print("📱 Widget: Found events: \(savedEvents.map { $0.text }.joined(separator: ", "))")
         } else {
             print("📱 Widget: No saved events found")
         }
         
-        let currentDate = Date()
-        let entry = SimpleEntry(date: currentDate, savedEvents: savedEvents)
-        entries.append(entry)
-
-        let nextUpdateDate = Calendar.current.date(byAdding: .minute, value: 2, to: currentDate)!
+        let entry = SimpleEntry(
+            date: currentDate,
+            dayOfWeek: dayOfWeek,
+            dayNumber: dayNumber,
+            savedEvents: savedEvents
+        )
+        
+        let nextUpdateDate = Calendar.current.date(byAdding: .minute, value: 5, to: currentDate)!
         print("📱 Widget: Timeline scheduled to update at \(nextUpdateDate)")
-        let timeline = Timeline(entries: entries, policy: .after(nextUpdateDate))
+        
+        let timeline = Timeline(entries: [entry], policy: .after(nextUpdateDate))
         completion(timeline)
+    }
+    
+    // Formateador para el día de la semana
+    private func formatDayOfWeek(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "es_ES")
+        formatter.dateFormat = "EEE"
+        let dayOfWeek = formatter.string(from: date)
+        return dayOfWeek.prefix(3).uppercased()
+    }
+    
+    // Formateador para el número del día
+    private func formatDayNumber(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d"
+        return formatter.string(from: date)
     }
     
     // Función para obtener los eventos guardados del storage compartido
@@ -55,12 +95,6 @@ struct Provider: TimelineProvider {
         guard let sharedDefaults = UserDefaults(suiteName: "group.com.anonymous.test1.shared") else {
             print("📱 Widget: Failed to access shared UserDefaults")
             return []
-        }
-        
-        // Log all keys in the shared defaults for debugging
-        print("📱 Widget: All keys in shared defaults:")
-        for key in sharedDefaults.dictionaryRepresentation().keys {
-            print("- \(key)")
         }
         
         guard let savedEventsString = sharedDefaults.string(forKey: "savedTexts") else {
@@ -117,11 +151,14 @@ struct Provider: TimelineProvider {
 
 struct SimpleEntry: TimelineEntry {
     let date: Date
+    let dayOfWeek: String
+    let dayNumber: String
     let savedEvents: [SavedEvent]
 }
 
 struct myWidgetEntryView : View {
     var entry: Provider.Entry
+    @Environment(\.colorScheme) var colorScheme
     
     // Función para formatear la hora (recortar a formato HH:MM)
     func formatTime(_ timeString: String?) -> String {
@@ -132,67 +169,101 @@ struct myWidgetEntryView : View {
         }
         return time
     }
+    
+    // Función para seleccionar el color para cada evento
+    func eventColor(index: Int) -> Color {
+        let colors: [Color] = [
+            Color(red: 0.4, green: 0.8, blue: 0.6), // Verde claro
+            Color(red: 0.4, green: 0.7, blue: 0.9), // Azul claro
+            Color(red: 0.9, green: 0.7, blue: 0.4), // Naranja claro
+            Color(red: 0.8, green: 0.5, blue: 0.8)  // Morado claro
+        ]
+        return colors[index % colors.count]
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Eventos de hoy")
-                .font(.headline)
-                .padding(.bottom, 2)
+        VStack(alignment: .leading, spacing: 0) {
+            // Day header
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(entry.dayOfWeek)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(colorScheme == .dark ? .white : .gray)
+                    
+                    Text(entry.dayNumber)
+                        .font(.system(size: 32, weight: .bold))
+                        .foregroundColor(colorScheme == .dark ? .white : .primary)
+                        .padding(.top, -5)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+                
+                Spacer()
+            }
             
-            if entry.savedEvents.isEmpty {
-                Text("No hay eventos guardados")
-                    .font(.caption)
-                    .foregroundColor(.gray)
-            } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 8) {
-                        ForEach(entry.savedEvents) { event in
-                            VStack(alignment: .leading, spacing: 2) {
+            Spacer()
+            
+            // Event list
+            VStack(spacing: 8) {
+                if entry.savedEvents.isEmpty {
+                    Text("No hay eventos para hoy")
+                        .font(.system(size: 14))
+                        .foregroundColor(.gray)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.top, 20)
+                } else {
+                    // Mostrar solo hasta 4 eventos para asegurar que caben
+                    let limitedEvents = Array(entry.savedEvents.prefix(3))
+                    
+                    ForEach(0..<limitedEvents.count, id: \.self) { index in
+                        let event = limitedEvents[index]
+                        
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(eventColor(index: index))
+                            
+                            HStack {
+                                // Tiempo
+                                if let start = event.startTime {
+                                    Text(formatTime(start))
+                                        .foregroundColor(.black)
+                                        .font(.system(size: 14, weight: .semibold))
+                                }
+                                
+                                // Título del evento
                                 Text(event.text)
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
+                                    .foregroundColor(.black)
+                                    .font(.system(size: 14, weight: .semibold))
                                     .lineLimit(1)
                                 
-                                HStack(spacing: 4) {
-                                    if let room = event.room, !room.isEmpty {
-                                        Text(room)
-                                            .font(.caption2)
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 2)
-                                            .background(Color.gray.opacity(0.2))
-                                            .cornerRadius(4)
-                                    }
-                                    
-                                    if let start = event.startTime, let end = event.endTime {
-                                        Text("\(formatTime(start)) - \(formatTime(end))")
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    
-                                    if let type = event.type, !type.isEmpty {
-                                        Spacer()
-                                        Text(type)
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
+                                Spacer()
                                 
-                                if let building = event.building, !building.isEmpty {
-                                    Text(building)
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                        .lineLimit(1)
+                                // Sala
+                                if let room = event.room, !room.isEmpty {
+                                    Text(room)
+                                        .foregroundColor(.black)
+                                        .font(.system(size: 14, weight: .semibold))
                                 }
-                                
-                                Divider()
-                                    .opacity(0.5)
                             }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
                         }
+                    }
+                    
+                    // Indicador de más eventos
+                    if entry.savedEvents.count > limitedEvents.count {
+                        Text("+ \(entry.savedEvents.count - limitedEvents.count) más...")
+                            .font(.system(size: 12))
+                            .foregroundColor(.gray)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                            .padding(.horizontal, 12)
+                            .padding(.top, 4)
                     }
                 }
             }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 16)
         }
-        .padding()
     }
 }
 
@@ -203,11 +274,10 @@ struct myWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: Provider()) { entry in
             myWidgetEntryView(entry: entry)
-                .padding()
-                .background(Color(UIColor.systemBackground))
+                .containerBackground(.background, for: .widget)
         }
         .configurationDisplayName("Mis Eventos")
         .description("Muestra tus eventos para hoy")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([.systemMedium])
     }
 }
