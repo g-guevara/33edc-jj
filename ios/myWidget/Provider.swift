@@ -6,6 +6,7 @@
 //
 
 
+// Provider.swift
 import WidgetKit
 import SwiftUI
 
@@ -20,7 +21,8 @@ struct Provider: TimelineProvider {
             date: currentDate,
             dayOfWeek: dayOfWeek,
             dayNumber: dayNumber,
-            savedEvents: []
+            savedEvents: [],
+            closestEvent: nil
         )
     }
 
@@ -30,12 +32,14 @@ struct Provider: TimelineProvider {
         let dayOfWeek = formatDayOfWeek(currentDate)
         let dayNumber = formatDayNumber(currentDate)
         let savedEvents = fetchSavedEvents()
+        let closestEvent = findClosestEvent(savedEvents, to: currentDate)
         
         let entry = SimpleEntry(
             date: currentDate,
             dayOfWeek: dayOfWeek,
             dayNumber: dayNumber,
-            savedEvents: savedEvents
+            savedEvents: savedEvents,
+            closestEvent: closestEvent
         )
         completion(entry)
     }
@@ -46,11 +50,15 @@ struct Provider: TimelineProvider {
         let dayOfWeek = formatDayOfWeek(currentDate)
         let dayNumber = formatDayNumber(currentDate)
         let savedEvents = fetchSavedEvents()
+        let closestEvent = findClosestEvent(savedEvents, to: currentDate)
         
         print("📱 Widget: getTimeline found \(savedEvents.count) saved events")
         
         if !savedEvents.isEmpty {
             print("📱 Widget: Found events: \(savedEvents.map { $0.text }.joined(separator: ", "))")
+            if let closest = closestEvent {
+                print("📱 Widget: Closest event: \(closest.text) in room \(closest.room ?? "unknown")")
+            }
         } else {
             print("📱 Widget: No saved events found")
         }
@@ -59,14 +67,56 @@ struct Provider: TimelineProvider {
             date: currentDate,
             dayOfWeek: dayOfWeek,
             dayNumber: dayNumber,
-            savedEvents: savedEvents
+            savedEvents: savedEvents,
+            closestEvent: closestEvent
         )
         
+        // Update every 5 minutes to keep the closest event accurate
         let nextUpdateDate = Calendar.current.date(byAdding: .minute, value: 5, to: currentDate)!
         print("📱 Widget: Timeline scheduled to update at \(nextUpdateDate)")
         
         let timeline = Timeline(entries: [entry], policy: .after(nextUpdateDate))
         completion(timeline)
+    }
+    
+    // Find event closest to current time
+    private func findClosestEvent(_ events: [SavedEvent], to currentDate: Date) -> SavedEvent? {
+        guard !events.isEmpty else { return nil }
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "HH:mm"
+        
+        let currentTimeString = dateFormatter.string(from: currentDate)
+        let currentMinutes = minutesFromTimeString(currentTimeString)
+        
+        var closestEvent: SavedEvent? = nil
+        var smallestDifference = Int.max
+        
+        for event in events {
+            guard let startTime = event.startTime else { continue }
+            
+            let eventMinutes = minutesFromTimeString(startTime)
+            let difference = abs(eventMinutes - currentMinutes)
+            
+            if difference < smallestDifference {
+                smallestDifference = difference
+                closestEvent = event
+            }
+        }
+        
+        return closestEvent
+    }
+    
+    // Convert time string to minutes since midnight for easy comparison
+    private func minutesFromTimeString(_ timeString: String) -> Int {
+        let components = timeString.split(separator: ":")
+        guard components.count >= 2,
+              let hours = Int(components[0]),
+              let minutes = Int(components[1]) else {
+            return 0
+        }
+        
+        return hours * 60 + minutes
     }
     
     // Formateador para el día de la semana
@@ -110,7 +160,7 @@ struct Provider: TimelineProvider {
             // Intentar decodificar usando el nuevo modelo
             let decodedEvents = try JSONDecoder().decode([SavedEvent].self, from: data)
             print("📱 Widget: Successfully decoded \(decodedEvents.count) saved events")
-          print("😁 Wiooopdget: Successfully decoded \(decodedEvents) events with old format")
+            print("😁 Widget: Successfully decoded \(decodedEvents) events with new format")
 
             return decodedEvents
         } catch {
@@ -140,7 +190,7 @@ struct Provider: TimelineProvider {
                 )}
                 
                 print("📱😁 Widget: Successfully decoded \(convertedEvents.count) events with old format")
-                print("😁 Wiooopdget: Successfully decoded \(convertedEvents) events with old format")
+                print("😁 Widget: Successfully decoded \(convertedEvents) events with old format")
                 return convertedEvents
             } catch {
                 print("📱 Widget: Error decoding with fallback model: \(error)")

@@ -5,7 +5,7 @@
 //  Created by Guillermo Guevara on 03-04-25.
 //
 
-
+// SavedEvent.swift
 import WidgetKit
 import SwiftUI
 
@@ -26,4 +26,5 @@ struct SimpleEntry: TimelineEntry {
     let dayOfWeek: String
     let dayNumber: String
     let savedEvents: [SavedEvent]
+    let closestEvent: SavedEvent?
 }
