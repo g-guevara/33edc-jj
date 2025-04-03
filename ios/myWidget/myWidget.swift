@@ -82,6 +82,12 @@ struct myWidgetEntryView : View {
                     Text(room)
                         .font(.system(size: 14, weight: .bold))
                         .lineLimit(1)
+                        .padding(.horizontal, 4)
+                        .background(
+                            Capsule()
+                                .fill(Color.black)
+                        )
+
                 }
             } else {
                 Text("Sin eventos próximos")
