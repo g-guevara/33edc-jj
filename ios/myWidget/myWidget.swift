@@ -66,26 +66,20 @@ struct myWidgetEntryView : View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Day header
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(entry.dayOfWeek)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(colorScheme == .dark ? .white : .gray)
-                    
-                    Text(entry.dayNumber)
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(colorScheme == .dark ? .white : .primary)
-                        .padding(.top, -5)
-                }
-                .padding(.horizontal, 10)
-                .padding(.top, 12)
+        HStack(alignment: .top, spacing: 10) {
+            // Fecha en el lado izquierdo
+            VStack(alignment: .center, spacing: 0) {
+                Text(entry.dayOfWeek)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(colorScheme == .dark ? .white : .gray)
                 
-                Spacer()
+                Text(entry.dayNumber)
+                .font(.system(size: 62 ))
+                    .foregroundColor(colorScheme == .dark ? .white : .primary)
+                    .padding(.top, -5)
             }
-            
-            Spacer()
+            .padding(.top, 12)
+            .frame(width: 50)
             
             // Event list
             VStack(spacing: 6) {
@@ -148,9 +142,9 @@ struct myWidgetEntryView : View {
                     }
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.bottom, 12)
+            .padding(.vertical, 12)
         }
+        .padding(.horizontal, 10)
     }
 }
 
