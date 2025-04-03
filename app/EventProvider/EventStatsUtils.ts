@@ -78,7 +78,7 @@ export const filterTodayEvents = (events: Evento[]): Evento[] => {
       return matches;
     });
     
-    console.log(`Eventos filtrados para hoy (Miércoles): ${JSON.stringify(filteredEvents)}`);
+    console.log(`Eventos filtrados para hoy (${todayDayOfWeek}): ${filteredEvents.length}`);
     
     // Save today's events for the widget
     saveEventsForWidget(filteredEvents);
@@ -88,20 +88,47 @@ export const filterTodayEvents = (events: Evento[]): Evento[] => {
 };
 
 /**
+ * Función para obtener el color según la letra del edificio
+ */
+const getColorForBuilding = (edificio: string): string => {
+  // Extract building letter if the format is correct (space followed by capital letter A-F)
+  const buildingMatch = edificio.match(/ ([A-F])/);
+  if (buildingMatch && buildingMatch[1]) {
+    const buildingLetter = buildingMatch[1]; // Get the matched letter
+    return CARD_COLORS[buildingLetter] || CARD_COLORS.default;
+  }
+  return CARD_COLORS.default;
+};
+
+/**
  * Save events for the widget to access
  */
 export const saveEventsForWidget = async (events: Evento[]) => {
   try {
-    // Prepara datos más completos para el widget
-    const widgetEvents = events.map(event => ({
-      id: event._id,
-      text: event.Evento,
-      type: event.Tipo,
-      room: event.Sala,
-      startTime: event.Inicio,
-      endTime: event.Fin,
-      building: event.Edificio
-    }));
+    const widgetEvents = events.map(event => {
+      // Determinar el color basado en el edificio
+      let cardColor = CARD_COLORS.default;
+      
+      // Extract building letter if the format is correct (space followed by capital letter A-F)
+      const buildingMatch = event.Edificio.match(/ ([A-F])/);
+      if (buildingMatch && buildingMatch[1]) {
+        const buildingLetter = buildingMatch[1]; // Get the matched letter
+        cardColor = CARD_COLORS[buildingLetter] || CARD_COLORS.default;
+      }
+      
+      console.log(`Widget - Evento: ${event.Evento.substring(0, 15)}... Edificio: ${event.Edificio}, Color: ${cardColor}`);
+      
+      return {
+        id: event._id,
+        text: event.Evento,
+        type: event.Tipo,
+        room: event.Sala,
+        color: cardColor,
+        startTime: event.Inicio,
+        endTime: event.Fin,
+        building: event.Edificio
+      };
+    });
     
     // Convierte a string para almacenamiento
     const jsonValue = JSON.stringify(widgetEvents);
@@ -115,6 +142,7 @@ export const saveEventsForWidget = async (events: Evento[]) => {
         "savedTexts", // Mantén la misma clave para compatibilidad
         jsonValue
       );
+      console.log(`Guardados ${widgetEvents.length} eventos para el widget`);
     } else {
       console.log("SharedStorage module not available");
     }
