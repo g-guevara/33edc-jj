@@ -5,7 +5,6 @@ struct myWidgetEntryView : View {
     var entry: Provider.Entry
     @Environment(\.colorScheme) var colorScheme
     
-        print("🎨 Procesando color: \(hexString ?? "nil")")
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             // Fecha en el lado izquierdo
