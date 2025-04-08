@@ -14,8 +14,9 @@ class MainApplication : Application(), ReactApplication {
 
   override val reactNativeHost: ReactNativeHost = object : DefaultReactNativeHost(this) {
     override fun getPackages(): List<ReactPackage> {
-      val packages = PackageList(this).packages
-      // Añadir el SharedStoragePackage
+      // Important: Create a mutable list that we can add to
+      val packages = PackageList(this).packages.toMutableList()
+      // Add the SharedStoragePackage
       packages.add(SharedStoragePackage())
       return packages
     }

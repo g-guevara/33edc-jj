@@ -1,7 +1,9 @@
 // app/EventStatsUtils.ts
 import { Evento, EventCardData, TimeGap, CARD_COLORS, parseTime } from "./EventStatsTypes";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { NativeModules } from 'react-native';
+import { NativeModules, Platform } from 'react-native';
+
+const { SharedStorage } = NativeModules;
 
 /**
  * Calculate time gaps between events
@@ -137,12 +139,13 @@ export const saveEventsForWidget = async (events: Evento[]) => {
     await AsyncStorage.setItem('widgetEvents', jsonValue);
     
     // También guarda en UserDefaults compartido con widget
-    if (NativeModules.SharedStorage) {
-      NativeModules.SharedStorage.set(
-        "savedTexts", // Mantén la misma clave para compatibilidad
-        jsonValue
-      );
-      console.log(`Guardados ${widgetEvents.length} eventos para el widget`);
+    if (Platform.OS === 'android' && SharedStorage) {
+      try {
+        SharedStorage.set("savedTexts", jsonValue);
+        console.log(`Guardados ${widgetEvents.length} eventos para el widget`);
+      } catch (error) {
+        console.error("Error guardando en SharedStorage:", error);
+      }
     } else {
       console.log("SharedStorage module not available");
     }

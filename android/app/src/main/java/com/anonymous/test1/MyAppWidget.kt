@@ -109,6 +109,7 @@ class MyAppWidget : AppWidgetProvider() {
         }
         
         private fun getSavedEvents(context: Context): String {
+            // Make sure to use the correct package name here
             val sharedPreferences = context.getSharedPreferences(
                     "com.anonymous.test1.shared", Context.MODE_PRIVATE)
             val savedEvents = sharedPreferences.getString("savedTexts", "[]") ?: "[]"
