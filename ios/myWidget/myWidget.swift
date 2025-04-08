@@ -25,37 +25,30 @@ struct myWidgetEntryView : View {
         VStack(spacing: 5) {
             Spacer()
             
-          if let closestEvent = entry.closestEvent {
-            // Hora del evento en forma de píldora más pequeña
-            if let startTime = closestEvent.startTime {
-              Text(myWidgetUtils.formatTime(startTime))
-                .font(.system(size: 16, weight: .bold))
-                .foregroundColor(.white)
-                .padding(.vertical, 3)
-                .padding(.horizontal, 10)
-                .background(
-                  Capsule()
-                    .fill(Color.black)
-                )
-
-            }
-            
-            if let room = closestEvent.room, !room.isEmpty {
-              Text(room)
-                .font(.system(size: 58, weight: .semibold))
-                .foregroundColor(colorScheme == .dark ? .white : .black)
-                .scaleEffect(x: 1, y: 1.2, anchor: .center)
-                .minimumScaleFactor(0.6)
-                .padding(.top, 2)
-            }
-            
-            // Nombre del evento
-            Text(closestEvent.text)
-              .font(.system(size: 12, weight: .regular))
-              .lineLimit(1)
-              .minimumScaleFactor(0.8)
-            
-          } else {
+            if let closestEvent = entry.closestEvent {
+                // Hora del evento en forma de píldora más pequeña
+                if let startTime = closestEvent.startTime {
+                    Text(myWidgetUtils.formatTime(startTime))
+                    .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.vertical, 3)
+                        .padding(.horizontal, 10)
+                        .background(
+                            Capsule()
+                                .fill(Color.black)
+                        )
+                        .padding(.bottom, 8)
+                }
+                
+                if let room = closestEvent.room, !room.isEmpty {
+                    Text(room)
+                    .font(.system(size: 58, weight: .semibold))
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .scaleEffect(x: 1, y: 1.8, anchor: .center)
+                        .minimumScaleFactor(0.6)
+                        .padding(.top, 2)
+                }
+            } else {
                 Text("No hay eventos para hoy")
                     .font(.system(size: 14))
                     .foregroundColor(.gray)
